@@ -6,7 +6,14 @@
 
   /* SLICE-D design system — carried over from the legacy system
      (index.html / index_rekonsiliasi_belanja_opd_v3.html) so the new
-     app keeps the same formal-government visual character. */
+     app keeps the same formal-government visual character.
+
+     This file is the SINGLE SOURCE of visual tokens. Components in
+     components/ui and components/layout must reference these tokens
+     (via Tailwind utility classes below) rather than hardcoding hex
+     values or one-off styles. Redesigning the app later should mean
+     editing this file + components/ui — never touching business
+     logic, Supabase/Auth/RLS code, or calculation code. */
   --color-navy: #17324d;
   --color-navy-2: #234b68;
   --color-blue-mid: #6b8cb8;
@@ -22,6 +29,15 @@
   --color-green-bg: #e9f6ef;
   --color-red: #b33b3b;
   --color-red-bg: #fff0f0;
+
+  /* Elevation & radius tokens — used by ui/Card, ui/Modal, ui/Drawer,
+     ui/Table so every surface in the app shares the same depth/roundness
+     language instead of each component inventing its own. */
+  --shadow-card: 0 2px 8px rgba(22, 43, 61, 0.06);
+  --shadow-panel: 0 3px 14px rgba(23, 50, 77, 0.08);
+  --shadow-overlay: -12px 0 35px rgba(0, 0, 0, 0.18);
+  --radius-control: 0.5rem; /* inputs, buttons, badges */
+  --radius-surface: 0.6rem; /* cards, tables, modals */
 }
 
 @theme inline {

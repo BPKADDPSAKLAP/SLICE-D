@@ -14,6 +14,23 @@ tidak ada kode lama yang di-reuse langsung.
 - Vercel — hosting
 - GitHub — source code
 
+## Prinsip Arsitektur UI (standing rule — berlaku untuk semua phase berikutnya)
+
+UI modular, terpisah total dari authentication/authorization/database/business logic/
+calculation/API/Supabase. Semua styling terpusat lewat:
+
+- `app/globals.css` — satu-satunya sumber design tokens (warna, shadow, radius)
+- `components/ui/` — primitives murni presentasional (`Button`, `Input`, `Select`, `Card`,
+  `Badge`, `Table`, `Modal`, `Drawer`) — tidak tahu apa-apa soal Supabase/auth/business logic
+- `components/layout/` — shell layout generik (`Sidebar`, `Topbar`, `PageHeader`) — menerima
+  item/slot sebagai props, tidak hardcode menu atau role
+- `components/auth/`, `components/dashboard/`, `components/rekonsiliasi/`, dst. — komponen
+  spesifik domain yang **menggabungkan** primitives `ui/` dengan data/logic dari `lib/`,
+  tapi tidak pernah menaruh warna/style baru di luar token yang ada
+
+Konsekuensi: redesain visual total nanti = edit `app/globals.css` + `components/ui/` saja,
+tanpa menyentuh `lib/supabase`, `lib/permissions`, `lib/excel`, RLS, atau schema database.
+
 ## Status: PHASE 1 — Project Foundation ✅
 
 Yang sudah ada di phase ini:
@@ -26,7 +43,13 @@ Yang sudah ada di phase ini:
   tetap jadi lapisan keamanan sesungguhnya
 - `lib/permissions` — helper `requireAdmin()` / `requireOpd()` untuk Server Actions/Route Handlers
 - Design tokens (`app/globals.css`) — palet navy/gold/cream diwarisi dari sistem lama, gaya formal
-  pemerintahan (lihat spec §35)
+  pemerintahan (lihat spec §35), plus token shadow/radius terpusat
+- **Design system komponen** (`components/ui/`): `Button`, `Input`, `Select`, `Card`, `Badge`,
+  `Table` (+ `TableRoot`/`THead`/`TBody`/`TR`/`TH`/`TD`), `Modal`, `Drawer` — semua presentasional
+  murni, tidak menyentuh Supabase/auth/business logic
+- **Layout shells** (`components/layout/`): `Sidebar`, `Topbar`, `PageHeader` — generik, menu/role
+  ditentukan pemanggil (route layout Phase 5/7), bukan hardcode di sini
+- `components/auth/LoginForm.tsx` — dibangun dari primitives di atas (bukan HTML mentah)
 - Halaman `/` — shell UI login (username, password, tahun anggaran). **Belum terhubung ke Supabase
   Auth** — itu bagian PHASE 3, setelah tabel `profiles` & `fiscal_years` ada di PHASE 2.
 - `types/database.ts` — placeholder minimal; akan digenerate ulang dari schema asli setelah migrasi

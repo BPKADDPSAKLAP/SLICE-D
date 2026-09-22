@@ -1,21 +1,18 @@
 import Image from "next/image";
-import { LoginForm } from "@/components/forms/login-form";
+import { LoginForm } from "@/components/auth/LoginForm";
+import { Card } from "@/components/ui";
 
 /**
  * Landing page = login page (spec §5).
  *
- * PHASE 1 SCOPE: visual shell only. The <LoginForm /> below renders the
- * three required fields (username, password, tahun anggaran) but does
- * not yet call Supabase Auth — that wiring, the synthetic-email
- * lookup, and the role-based redirect (/admin/dashboard vs
- * /opd/dashboard) are built in PHASE 3 (Authentication), once
- * PHASE 2 (Supabase database: profiles, fiscal_years) exists.
+ * PHASE 1 SCOPE: visual shell only, composed from components/ui so
+ * the whole visual design can change later without touching this
+ * file's structure. Real Supabase Auth wiring and fiscal-year data
+ * come in PHASE 2/3.
  */
 export default function LoginPage() {
   return (
     <main className="relative flex min-h-screen items-center justify-center bg-navy px-4">
-      {/* subtle vignette, echoes the legacy login screen without the
-          heavy texture/animation so it stays fast and accessible */}
       <div
         className="pointer-events-none absolute inset-0"
         style={{
@@ -24,7 +21,7 @@ export default function LoginPage() {
         }}
       />
 
-      <div className="relative z-10 flex w-full max-w-sm flex-col items-center gap-8 rounded-xl bg-white px-8 py-10 shadow-2xl">
+      <Card className="relative z-10 flex w-full max-w-sm flex-col items-center gap-8 border-none px-8 py-10 shadow-2xl">
         <div className="flex flex-col items-center gap-3 text-center">
           <Image
             src="/images/logo-denpasar.png"
@@ -50,7 +47,7 @@ export default function LoginPage() {
           <br />
           Kota Denpasar
         </p>
-      </div>
+      </Card>
     </main>
   );
 }
