@@ -1,56 +1,81 @@
 "use client";
 
-import { useState } from "react";
+import { useActionState } from "react";
 import { Button, Input, Select, type SelectOption } from "@/components/ui";
+import { loginAction, type LoginState } from "@/lib/auth/login";
 
 export interface LoginFormProps {
   /**
-   * Fiscal years to offer in the select. Populated by the server
-   * component that renders this form (from the `fiscal_years` table,
-   * once Phase 2 exists) — this component has no Supabase access of
-   * its own.
+   * Active fiscal years from public.fiscal_years, fetched by the
+   * server component that renders this form — this component has no
+   * Supabase access of its own (spec §8: never hardcoded).
    */
-  fiscalYears?: SelectOption[];
+  fiscalYears: SelectOption[];
+  /** Pre-selected when exactly one fiscal year is active (spec §3). */
+  defaultFiscalYear?: string;
 }
 
+const initialState: LoginState = { error: null };
+
 /**
- * PHASE 1: presentational only, composed entirely from components/ui
- * primitives (Input, Select, Button) — no ad-hoc styling here.
- *
- * Auth wiring (Server Action calling supabase.auth.signInWithPassword
- * with the synthetic internal email, then redirect by role) is added
- * in PHASE 3 as a separate `lib/auth/login.ts` action passed in via
- * `action` — this component's job stays limited to layout + state.
+ * PHASE 3A: wired to the real `loginAction` Server Action via
+ * useActionState — Supabase Auth does the actual password check
+ * server-side; this component only owns pending/error UI state.
+ * Still composed entirely from components/ui (Input/Select/Button),
+ * per the standing design-system rule.
  */
-export function LoginForm({ fiscalYears = [] }: LoginFormProps) {
-  const [submitting, setSubmitting] = useState(false);
+export function LoginForm({ fiscalYears, defaultFiscalYear }: LoginFormProps) {
+  const [state, formAction, pending] = useActionState(
+    loginAction,
+    initialState
+  );
+  const noFiscalYears = fiscalYears.length === 0;
 
   return (
-    <form
-      className="flex w-full flex-col gap-4"
-      onSubmit={(e) => {
-        e.preventDefault();
-        setSubmitting(true);
-        // TODO (Phase 3): call a Server Action from lib/auth here.
-        setSubmitting(false);
-      }}
-    >
-      <Input label="Username" name="username" autoComplete="username" required />
+    <form action={formAction} className="flex w-full flex-col gap-4">
+      {state.error && (
+        <p
+          role="alert"
+          className="rounded-[var(--radius-control)] bg-red-bg px-3 py-2 text-xs font-medium text-red"
+        >
+          {state.error}
+        </p>
+      )}
+
+      <Input
+        label="Username"
+        name="username"
+        autoComplete="username"
+        required
+        disabled={pending}
+      />
       <Input
         label="Password"
         name="password"
         type="password"
         autoComplete="current-password"
         required
+        disabled={pending}
       />
       <Select
         label="Tahun Anggaran"
         name="fiscal_year"
-        placeholder="Pilih tahun anggaran"
+        placeholder={noFiscalYears ? undefined : "Pilih tahun anggaran"}
         options={fiscalYears}
+        defaultValue={defaultFiscalYear}
         required
+        disabled={pending || noFiscalYears}
+        error={
+          noFiscalYears ? "Tidak ada tahun anggaran aktif saat ini." : undefined
+        }
       />
-      <Button type="submit" loading={submitting} className="mt-2">
+
+      <Button
+        type="submit"
+        loading={pending}
+        disabled={noFiscalYears}
+        className="mt-2"
+      >
         Masuk
       </Button>
     </form>
