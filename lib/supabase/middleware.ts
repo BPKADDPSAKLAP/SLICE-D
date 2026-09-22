@@ -49,14 +49,11 @@ export async function updateSession(request: NextRequest) {
   if (user && (isAdminRoute || isOpdRoute)) {
     // Role check happens against `profiles`, which is protected by RLS
     // (a user can only ever read their own profile row).
-    // NOTE: explicit cast below is only needed because types/database.ts
-    // is still the Phase 1 placeholder; drop it once real generated
-    // types land in Phase 2.
-    const { data: profile } = (await supabase
+    const { data: profile } = await supabase
       .from("profiles")
       .select("role")
       .eq("id", user.id)
-      .single()) as { data: { role: "admin" | "opd" } | null };
+      .single();
 
     if (isAdminRoute && profile?.role !== "admin") {
       const url = request.nextUrl.clone();
