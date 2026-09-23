@@ -1,47 +1,24 @@
-import { requireAdmin } from "@/lib/permissions";
-import { LogoutButton } from "@/components/auth/LogoutButton";
-import { Card, CardHeader, CardBody } from "@/components/ui";
 import { PageHeader } from "@/components/layout";
+import { EmptyState } from "@/components/ui";
 
 /**
- * PHASE 3A PLACEHOLDER ONLY. `requireAdmin()` (existing
- * lib/permissions, not duplicated) is the actual authorization check
- * here — everything below it is just enough UI to verify login,
- * route protection, and logout end-to-end (AUTH-01, 06, 07, 12, 13).
- * The real Admin Dashboard (OPD stats, reconciliation status grid,
- * spec §19) is built in a later phase.
+ * PHASE 3B: shell only. requireAdmin() already ran in
+ * app/admin/layout.tsx before this page renders — see spec §9. Real
+ * content (OPD monitoring grid, reconciliation status) is a later
+ * phase; no dummy statistics are shown in the meantime (spec §15).
  */
-export default async function AdminDashboardPage() {
-  const profile = await requireAdmin();
-
+export default function AdminDashboardPage() {
   return (
-    <main className="min-h-screen bg-background p-6">
+    <>
       <PageHeader
         eyebrow="Admin"
-        title={`Selamat datang, ${profile.username}`}
-        subtitle="Autentikasi berhasil. Dashboard Admin sesungguhnya dibangun pada phase berikutnya."
-        actions={<LogoutButton />}
+        title="Dashboard Admin"
+        subtitle="Ringkasan monitoring rekonsiliasi seluruh OPD."
       />
-      <Card>
-        <CardHeader className="text-sm font-bold text-navy">
-          Status Autentikasi (Phase 3A)
-        </CardHeader>
-        <CardBody className="space-y-1 text-sm text-muted">
-          <p>
-            Role: <span className="font-semibold text-navy">{profile.role}</span>
-          </p>
-          <p>
-            Username:{" "}
-            <span className="font-semibold text-navy">{profile.username}</span>
-          </p>
-          <p>
-            Status akun:{" "}
-            <span className="font-semibold text-green">
-              {profile.aktif ? "Aktif" : "Nonaktif"}
-            </span>
-          </p>
-        </CardBody>
-      </Card>
-    </main>
+      <EmptyState
+        title="Belum ada data"
+        description="Data rekonsiliasi akan tampil di sini setelah modul rekonsiliasi tersedia."
+      />
+    </>
   );
 }

@@ -31,7 +31,7 @@ calculation/API/Supabase. Semua styling terpusat lewat:
 Konsekuensi: redesain visual total nanti = edit `app/globals.css` + `components/ui/` saja,
 tanpa menyentuh `lib/supabase`, `lib/permissions`, `lib/excel`, RLS, atau schema database.
 
-## Status: PHASE 1 ✅ / PHASE 2 ✅ / PHASE 3A — Authentication ✅
+## Status: PHASE 1 ✅ / PHASE 2 ✅ / PHASE 3A — Authentication ✅ / PHASE 3B — Application Shell ✅
 
 ### Phase 1 (fondasi proyek)
 - Struktur folder (`app/`, `components/`, `lib/`, `supabase/`, `types/`, `scripts/`, `apps-script/`)
@@ -215,7 +215,43 @@ npx supabase db reset   # menjalankan migrations + seed ke local stack
 psql "$(npx supabase status -o env | grep DB_URL)" -f supabase/tests/rls_test_suite.sql
 ```
 
-## Data yang belum tersedia (jangan dikarang — lihat spec §43)
+## Phase 3B: Application Shell & Layout
+
+Dibangun di atas komponen `components/ui` dan `components/layout` yang sudah ada sejak Phase 1
+(tidak ada primitive baru untuk Button/Card/Badge/Table/Modal/Input/Select — hanya ditambah
+`EmptyState`, dan `Drawer` diperluas dengan opsi `side`/`bodyClassName` supaya bisa dipakai
+ulang sebagai drawer navigasi mobile, bukan drawer baru).
+
+- `app/admin/layout.tsx`, `app/opd/layout.tsx` — enforcement point yang sesungguhnya
+  (`requireAdmin()` / `requireOpd()`), membungkus seluruh route di bawahnya dengan
+  `AppShell`. `proxy.ts` (Phase 1/3A, tidak diubah) tetap jalan sebagai lapisan UX tambahan.
+- `components/layout/AppShell.tsx` — shell reusable: sidebar desktop + drawer mobile (kiri,
+  Escape-to-close, dari `components/ui/Drawer` yang sama) + topbar + content area. Tidak tahu
+  apa-apa soal role/Supabase — hanya menerima `navItems`/slot sebagai props.
+- `components/layout/navigation.tsx` — `adminNavItems` (6 menu) / `opdNavItems` (2 menu),
+  terpisah dari rendering. Sidebar tidak pernah berisi `if (role === "admin")`.
+- `components/ui/icons.tsx` — set ikon monoline minimal buatan sendiri. **Catatan**: tidak ada
+  icon library (mis. `lucide-react`) terpasang di `package.json` saat ini, jadi ini dibuat
+  manual sesuai instruksi ("jangan buat SVG panjang jika library sudah ada" — belum ada
+  library-nya). Kalau nanti `lucide-react` dipasang, cukup ganti isi file ini, seluruh call
+  site di `navigation.tsx` tidak perlu berubah.
+- Halaman placeholder (`/admin/rekonsiliasi`, `/admin/cek-selisih`, `/admin/unggah-rekon`,
+  `/admin/database`, `/admin/data-master`, `/opd/rekonsiliasi`) — `PageHeader` + `EmptyState`
+  lewat `ModulePlaceholder`, tanpa angka dummy.
+- Dashboard Admin/OPD disederhanakan jadi shell murni (`PageHeader` + empty state); pengecekan
+  auth yang tadinya dobel di setiap page (Phase 3A, sebelum ada `app/admin|opd/layout.tsx`)
+  dihapus dari page karena sekarang sudah dijamin oleh layout — mengurangi satu query
+  `profiles` per request tanpa mengurangi proteksi.
+
+### Verifikasi Phase 3B di sandbox ini
+
+`node_modules/` tidak ter-install dan sandbox ini tidak-punya akses jaringan ke registry npm
+(`npm install` gagal 403), jadi `npm run lint` dan `npm run build` **tidak bisa dijalankan di
+sini** — jalankan itu secara lokal sebelum commit sungguhan. Semua file di atas sudah ditulis
+konsisten dengan tipe/props yang ada (`SidebarNavItem`, `Badge`, dst.) lewat pembacaan manual,
+tapi type-check TypeScript sesungguhnya baru terjadi saat Anda menjalankan `npm run build`.
+
+
 - 36 nama & kode OPD resmi
 - Username/password user OPD
 - NIP, nama pejabat, nama petugas rekon
