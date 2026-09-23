@@ -32,6 +32,32 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
+  /**
+   * A plain `NextResponse.redirect(url)` is a brand-new response
+   * object — it does NOT inherit whatever cookies `setAll` above
+   * already wrote onto `supabaseResponse` (a rotated session token
+   * from `getUser()`, or the cleared session cookies from
+   * `signOut()`). Every redirect in this function MUST go through
+   * this helper, or a refreshed/cleared session silently doesn't
+   * reach the browser — the very next request would read a stale or
+   * already-invalidated cookie.
+   */
+  function redirectTo(pathname: string, params?: Record<string, string>) {
+    const url = request.nextUrl.clone();
+    url.pathname = pathname;
+    url.search = "";
+    if (params) {
+      for (const [key, value] of Object.entries(params)) {
+        url.searchParams.set(key, value);
+      }
+    }
+    const redirectResponse = NextResponse.redirect(url);
+    supabaseResponse.cookies.getAll().forEach((cookie) => {
+      redirectResponse.cookies.set(cookie);
+    });
+    return redirectResponse;
+  }
+
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -41,9 +67,7 @@ export async function updateSession(request: NextRequest) {
   const isOpdRoute = path.startsWith("/opd");
 
   if (!user && (isAdminRoute || isOpdRoute)) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/";
-    return NextResponse.redirect(url);
+    return redirectTo("/");
   }
 
   if (user && (isAdminRoute || isOpdRoute)) {
@@ -67,28 +91,18 @@ export async function updateSession(request: NextRequest) {
     // (spec §4: "jika profile tidak ditemukan: logout"; §9 error copy).
     if (!profile) {
       await supabase.auth.signOut();
-      const url = request.nextUrl.clone();
-      url.pathname = "/";
-      url.searchParams.set("error", "no_profile");
-      return NextResponse.redirect(url);
+      return redirectTo("/", { error: "no_profile" });
     }
     if (!profile.aktif) {
       await supabase.auth.signOut();
-      const url = request.nextUrl.clone();
-      url.pathname = "/";
-      url.searchParams.set("error", "inactive");
-      return NextResponse.redirect(url);
+      return redirectTo("/", { error: "inactive" });
     }
 
     if (isAdminRoute && profile.role !== "admin") {
-      const url = request.nextUrl.clone();
-      url.pathname = "/opd/dashboard";
-      return NextResponse.redirect(url);
+      return redirectTo("/opd/dashboard");
     }
     if (isOpdRoute && profile.role !== "opd") {
-      const url = request.nextUrl.clone();
-      url.pathname = "/admin/dashboard";
-      return NextResponse.redirect(url);
+      return redirectTo("/admin/dashboard");
     }
   }
 

@@ -76,7 +76,27 @@ export async function loginAction(
     };
   }
 
-  await setSelectedFiscalYear(fiscal_year);
+  // The <select> value is client input — never trusted as-is. The
+  // frontend already filters to active=true (app/page.tsx), but that
+  // is a UX convenience, not a guarantee: the option list could be
+  // stale (year deactivated between page load and submit) or the
+  // request could be forged entirely. Re-check against the database,
+  // through the same RLS-governed client, before persisting anything.
+  const { data: fiscalYear, error: fiscalYearError } = await supabase
+    .from("fiscal_years")
+    .select("year")
+    .eq("year", fiscal_year)
+    .eq("active", true)
+    .maybeSingle();
+
+  if (fiscalYearError) {
+    return { error: "Terjadi kesalahan saat memvalidasi tahun anggaran." };
+  }
+  if (!fiscalYear) {
+    return { error: "Tahun anggaran yang dipilih tidak tersedia." };
+  }
+
+  await setSelectedFiscalYear(fiscalYear.year);
 
   redirect(profile.role === "admin" ? "/admin/dashboard" : "/opd/dashboard");
 }
