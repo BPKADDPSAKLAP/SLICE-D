@@ -11,7 +11,11 @@ export const config = {
      * Match all request paths except:
      * - _next/static, _next/image (Next.js internals)
      * - favicon.ico, images
-     * - the API auth routes themselves (they set/read cookies directly)
+     *
+     * Login/logout run as Server Actions on "/" (not a separate
+     * /api/auth route), so they're intentionally NOT excluded here —
+     * updateSession() runs on them too, which is harmless (it only
+     * refreshes the session and redirects for /admin|/opd paths).
      */
     "/((?!_next/static|_next/image|favicon.ico|images/).*)",
   ],

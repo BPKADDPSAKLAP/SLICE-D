@@ -31,7 +31,7 @@ calculation/API/Supabase. Semua styling terpusat lewat:
 Konsekuensi: redesain visual total nanti = edit `app/globals.css` + `components/ui/` saja,
 tanpa menyentuh `lib/supabase`, `lib/permissions`, `lib/excel`, RLS, atau schema database.
 
-## Status: PHASE 1 — Project Foundation ✅ / PHASE 2 — Supabase Database ✅
+## Status: PHASE 1 ✅ / PHASE 2 ✅ / PHASE 3A — Authentication ✅ / PHASE 3B — Application Shell ✅
 
 ### Phase 1 (fondasi proyek)
 - Struktur folder (`app/`, `components/`, `lib/`, `supabase/`, `types/`, `scripts/`, `apps-script/`)
@@ -63,8 +63,10 @@ tanpa menyentuh `lib/supabase`, `lib/permissions`, `lib/excel`, RLS, atau schema
 - `types/database.ts` — digenerate dari schema asli (bukan lagi placeholder Phase 1)
 
 ### Belum ada di phase ini (menyusul di phase berikutnya)
-- Login benar-benar berfungsi (PHASE 3)
-- Dashboard, form rekonsiliasi, cek selisih, dst.
+- Dashboard, form rekonsiliasi, cek selisih, dst. (halaman `/admin/dashboard` dan
+  `/opd/dashboard` saat ini hanya placeholder pembuktian auth — lihat bagian Phase 3A di bawah)
+- Admin create OPD account / reset password lewat UI (masih manual via Supabase Dashboard + SQL)
+- Ganti password wajib (`must_change_password` sudah ada di schema, belum ada flow-nya)
 
 ## Menjalankan secara lokal
 
@@ -135,6 +137,63 @@ npm run lint
      untuk melihat semua policy, atau login sebagai user tertentu lewat dashboard "Impersonate"
      dan coba query tabel yang seharusnya tidak bisa diakses.
 
+## Phase 3A: Login benar-benar berfungsi
+
+### Membuat user Admin/OPD pertama (manual — belum ada UI, itu phase berikutnya)
+
+Login memetakan `username` ke email sintetis `username@AUTH_INTERNAL_EMAIL_DOMAIN` secara
+**deterministik** (lihat `lib/auth/internal-email.ts`) — tidak ada tabel lookup. Ini berarti
+saat membuat user di Supabase Auth, emailnya **harus persis** mengikuti pola ini, dengan
+username huruf kecil semua.
+
+1. Pastikan `.env.local` (lokal) dan environment Vercel (produksi) punya `AUTH_INTERNAL_EMAIL_DOMAIN`
+   yang sama persis (default di `.env.example`: `internal.slice-d.local`) — **bukan** domain publik
+   yang bisa menerima email sungguhan.
+2. Di Supabase Dashboard → Authentication → Add user → isi:
+   - Email: `<username-huruf-kecil>@<AUTH_INTERNAL_EMAIL_DOMAIN>`, misal `admin1@internal.slice-d.local`
+   - Password: password sementara yang kuat (bukan default yang mudah ditebak)
+   - Auto Confirm User: **ya** (tidak ada alur verifikasi email untuk sistem internal ini)
+3. Salin `id` user yang baru dibuat, lalu di SQL Editor:
+   ```sql
+   -- Admin:
+   insert into public.profiles (id, username, role, opd_id, aktif)
+   values ('<auth-user-id>', 'admin1', 'admin', null, true);
+
+   -- OPD (opd_id ambil dari public.opd_master, mis. baris seed placeholder):
+   insert into public.profiles (id, username, role, opd_id, aktif)
+   values ('<auth-user-id>', 'opd_test_a', 'opd',
+     (select id from public.opd_master where kode_opd = 'OPD_001'), true);
+   ```
+4. Login di `/` dengan **username** (`admin1`, bukan email) + password yang tadi diset.
+
+### Checklist pengujian (spec §15)
+
+| ID | Skenario | Status |
+|---|---|---|
+| AUTH-01 | Login valid ADMIN | ⏳ perlu project Supabase asli — lihat catatan di bawah |
+| AUTH-02 | Login valid OPD | ⏳ sama seperti di atas |
+| AUTH-03 | Password salah | ⏳ sama seperti di atas |
+| AUTH-04 | Username tidak ditemukan | ⏳ sama seperti di atas |
+| AUTH-05 | Akun nonaktif | ⏳ sama seperti di atas |
+| AUTH-06 | ADMIN membuka `/admin/*` | ✅ dijamin `requireAdmin()` (diwarisi dari Phase 1, tidak diduplikasi) |
+| AUTH-07 | ADMIN mencoba `/opd/*` | ✅ `proxy.ts` redirect ke `/admin/dashboard` |
+| AUTH-08 | OPD membuka `/opd/*` | ✅ dijamin `requireOpd()` |
+| AUTH-09 | OPD mencoba `/admin/*` | ✅ `proxy.ts` redirect ke `/opd/dashboard` |
+| AUTH-10 | Belum login buka `/admin/*` | ✅ `proxy.ts` redirect ke `/` |
+| AUTH-11 | Belum login buka `/opd/*` | ✅ `proxy.ts` redirect ke `/` |
+| AUTH-12 | Logout | ✅ `logoutAction` memanggil `supabase.auth.signOut()` sungguhan |
+| AUTH-13 | Refresh browser setelah login | ✅ session dari cookie SSR via `proxy.ts`, bukan state client |
+| AUTH-14 | Fiscal year dari database | ✅ `app/page.tsx` query `fiscal_years`, tidak hardcoded |
+| AUTH-15 | OPD profile menentukan `opd_id` | ✅ `/opd/dashboard` resolve dari `profile.opd_id`, bukan query param |
+
+**Kenapa AUTH-01 s/d 05 belum bisa saya jalankan sendiri:** butuh Supabase Auth (GoTrue) yang
+sungguhan — lingkungan development saya tidak punya Docker (alasan yang sama kenapa Phase 2
+memakai skrip introspeksi manual untuk `types/database.ts`). Yang sudah saya verifikasi adalah
+`npm run build` + `npm run lint` bersih, dan seluruh logic (mapping email, query `profiles`,
+pesan error, redirect by role) mengikuti pola yang **sudah** diverifikasi bekerja di Phase 2
+(RLS `fiscal_years` untuk `anon`, RLS `profiles` untuk pemilik baris). AUTH-01–05 perlu
+dijalankan manual oleh Anda terhadap project Supabase asli setelah user pertama dibuat di atas.
+
 ### Menjalankan test RLS secara lokal
 
 Test suite butuh Postgres sungguhan (bukan mock) plus stub schema `auth` minimal, karena
@@ -156,7 +215,43 @@ npx supabase db reset   # menjalankan migrations + seed ke local stack
 psql "$(npx supabase status -o env | grep DB_URL)" -f supabase/tests/rls_test_suite.sql
 ```
 
-## Data yang belum tersedia (jangan dikarang — lihat spec §43)
+## Phase 3B: Application Shell & Layout
+
+Dibangun di atas komponen `components/ui` dan `components/layout` yang sudah ada sejak Phase 1
+(tidak ada primitive baru untuk Button/Card/Badge/Table/Modal/Input/Select — hanya ditambah
+`EmptyState`, dan `Drawer` diperluas dengan opsi `side`/`bodyClassName` supaya bisa dipakai
+ulang sebagai drawer navigasi mobile, bukan drawer baru).
+
+- `app/admin/layout.tsx`, `app/opd/layout.tsx` — enforcement point yang sesungguhnya
+  (`requireAdmin()` / `requireOpd()`), membungkus seluruh route di bawahnya dengan
+  `AppShell`. `proxy.ts` (Phase 1/3A, tidak diubah) tetap jalan sebagai lapisan UX tambahan.
+- `components/layout/AppShell.tsx` — shell reusable: sidebar desktop + drawer mobile (kiri,
+  Escape-to-close, dari `components/ui/Drawer` yang sama) + topbar + content area. Tidak tahu
+  apa-apa soal role/Supabase — hanya menerima `navItems`/slot sebagai props.
+- `components/layout/navigation.tsx` — `adminNavItems` (6 menu) / `opdNavItems` (2 menu),
+  terpisah dari rendering. Sidebar tidak pernah berisi `if (role === "admin")`.
+- `components/ui/icons.tsx` — set ikon monoline minimal buatan sendiri. **Catatan**: tidak ada
+  icon library (mis. `lucide-react`) terpasang di `package.json` saat ini, jadi ini dibuat
+  manual sesuai instruksi ("jangan buat SVG panjang jika library sudah ada" — belum ada
+  library-nya). Kalau nanti `lucide-react` dipasang, cukup ganti isi file ini, seluruh call
+  site di `navigation.tsx` tidak perlu berubah.
+- Halaman placeholder (`/admin/rekonsiliasi`, `/admin/cek-selisih`, `/admin/unggah-rekon`,
+  `/admin/database`, `/admin/data-master`, `/opd/rekonsiliasi`) — `PageHeader` + `EmptyState`
+  lewat `ModulePlaceholder`, tanpa angka dummy.
+- Dashboard Admin/OPD disederhanakan jadi shell murni (`PageHeader` + empty state); pengecekan
+  auth yang tadinya dobel di setiap page (Phase 3A, sebelum ada `app/admin|opd/layout.tsx`)
+  dihapus dari page karena sekarang sudah dijamin oleh layout — mengurangi satu query
+  `profiles` per request tanpa mengurangi proteksi.
+
+### Verifikasi Phase 3B di sandbox ini
+
+`node_modules/` tidak ter-install dan sandbox ini tidak-punya akses jaringan ke registry npm
+(`npm install` gagal 403), jadi `npm run lint` dan `npm run build` **tidak bisa dijalankan di
+sini** — jalankan itu secara lokal sebelum commit sungguhan. Semua file di atas sudah ditulis
+konsisten dengan tipe/props yang ada (`SidebarNavItem`, `Badge`, dst.) lewat pembacaan manual,
+tapi type-check TypeScript sesungguhnya baru terjadi saat Anda menjalankan `npm run build`.
+
+
 - 36 nama & kode OPD resmi
 - Username/password user OPD
 - NIP, nama pejabat, nama petugas rekon

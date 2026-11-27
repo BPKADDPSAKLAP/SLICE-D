@@ -11,13 +11,19 @@ export interface DrawerProps {
   description?: string;
   children: ReactNode;
   className?: string;
+  /** Which edge the panel slides in from. Defaults to "right" (original behavior). */
+  side?: "left" | "right";
+  /** Override the content area's default px-5 py-4 padding, e.g. for full-bleed content like a nav list. */
+  bodyClassName?: string;
 }
 
 /**
- * Generic right-side sliding drawer. Used later (Phase 9, Cek
- * Selisih) for the "Mengapa Selisih?" detail panel — but this
- * component has no idea what a "selisih" is; it just renders
- * whatever children it's given.
+ * Generic sliding drawer, right-side by default. Used later
+ * (Phase 9, Cek Selisih) for the "Mengapa Selisih?" detail panel, and
+ * from Phase 3B as the mobile navigation drawer (side="left",
+ * reusing Sidebar as its content) — but this component still has no
+ * idea what a "selisih" or a nav item is; it just renders whatever
+ * children it's given.
  */
 export function Drawer({
   open,
@@ -26,6 +32,8 @@ export function Drawer({
   description,
   children,
   className,
+  side = "right",
+  bodyClassName,
 }: DrawerProps) {
   useEffect(() => {
     if (!open) return;
@@ -47,7 +55,8 @@ export function Drawer({
       />
       <div
         className={cn(
-          "absolute right-0 top-0 flex h-full w-full max-w-xl flex-col bg-white shadow-[var(--shadow-overlay)]",
+          "absolute top-0 flex h-full w-full max-w-xl flex-col bg-white shadow-[var(--shadow-overlay)]",
+          side === "left" ? "left-0" : "right-0",
           className
         )}
       >
@@ -69,7 +78,9 @@ export function Drawer({
             </button>
           </div>
         )}
-        <div className="flex-1 overflow-auto px-5 py-4">{children}</div>
+        <div className={cn("flex-1 overflow-auto px-5 py-4", bodyClassName)}>
+          {children}
+        </div>
       </div>
     </div>,
     document.body
