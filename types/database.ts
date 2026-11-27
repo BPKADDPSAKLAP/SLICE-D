@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.17"
   }
   public: {
     Tables: {
@@ -103,6 +103,77 @@ export type Database = {
           metadata?: Json | null
         }
         Relationships: []
+      }
+      cek_selisih_runs: {
+        Row: {
+          catatan: string | null
+          created_at: string
+          fiscal_year: number
+          id: string
+          jumlah_rekening: number
+          jumlah_selisih: number
+          jumlah_sesuai: number
+          jumlah_transaksi: number
+          lra_manual_file_id: string | null
+          lra_program_file_id: string | null
+          reporting_month: number
+          result_file_id: string | null
+          status: string
+          total_lra_program: number
+          total_selisih: number
+          total_sp2d: number
+          uploaded_by: string
+          version: number
+        }
+        Insert: {
+          catatan?: string | null
+          created_at?: string
+          fiscal_year: number
+          id?: string
+          jumlah_rekening?: number
+          jumlah_selisih?: number
+          jumlah_sesuai?: number
+          jumlah_transaksi?: number
+          lra_manual_file_id?: string | null
+          lra_program_file_id?: string | null
+          reporting_month: number
+          result_file_id?: string | null
+          status: string
+          total_lra_program?: number
+          total_selisih?: number
+          total_sp2d?: number
+          uploaded_by: string
+          version: number
+        }
+        Update: {
+          catatan?: string | null
+          created_at?: string
+          fiscal_year?: number
+          id?: string
+          jumlah_rekening?: number
+          jumlah_selisih?: number
+          jumlah_sesuai?: number
+          jumlah_transaksi?: number
+          lra_manual_file_id?: string | null
+          lra_program_file_id?: string | null
+          reporting_month?: number
+          result_file_id?: string | null
+          status?: string
+          total_lra_program?: number
+          total_selisih?: number
+          total_sp2d?: number
+          uploaded_by?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cek_selisih_runs_fiscal_year_fkey"
+            columns: ["fiscal_year"]
+            isOneToOne: false
+            referencedRelation: "fiscal_years"
+            referencedColumns: ["year"]
+          },
+        ]
       }
       fiscal_years: {
         Row: {
@@ -495,6 +566,25 @@ export type Database = {
       }
     }
     Functions: {
+      activate_cek_selisih_run: { Args: { p_id: string }; Returns: undefined }
+      create_cek_selisih_run: {
+        Args: {
+          p_catatan?: string
+          p_fiscal_year: number
+          p_jumlah_rekening?: number
+          p_jumlah_selisih?: number
+          p_jumlah_sesuai?: number
+          p_jumlah_transaksi?: number
+          p_lra_manual_file_id?: string
+          p_lra_program_file_id?: string
+          p_reporting_month: number
+          p_result_file_id?: string
+          p_total_lra_program?: number
+          p_total_selisih?: number
+          p_total_sp2d?: number
+        }
+        Returns: string
+      }
       get_my_opd_id: { Args: never; Returns: string }
       is_admin: { Args: never; Returns: boolean }
     }
